@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <script type='text/javascript' src='https://cdn.scaledrone.com/scaledrone.min.js'></script>
-  <title>Cryptin Video - Chamadas de vídeo em alta qualidade</title>
+  <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous">
+  <title>Cryptin Video</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
   <style>
@@ -10,18 +11,19 @@
       display: flex;
       height: 100vh;
       margin: 0;
-      background-color: #EBF0F1;
+      background-color: #ebf0f1;
       align-items: center;
       justify-content: center;
-      padding: 0 50px;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 0 50px;      
     }
+    
+    * { font-family: 'Bahnschrift', 'Segoe UI', 'SF Text', 'Ubuntu'; }
 
     video {
       max-width: calc(50% - 100px);
       margin: 0 50px;
       box-sizing: border-box;
-      border-radius: 2px;
+      border-radius: 5px;
       padding: 0;
       box-shadow: rgba(156, 172, 172, 0.2) 0px 2px 2px, rgba(156, 172, 172, 0.2) 0px 4px 4px, rgba(156, 172, 172, 0.2) 0px 8px 8px, rgba(156, 172, 172, 0.2) 0px 16px 16px, rgba(156, 172, 172, 0.2) 0px 32px 32px, rgba(156, 172, 172, 0.2) 0px 64px 64px;
       background-color: #222224;
@@ -29,19 +31,169 @@
 
     .copy {
       position: fixed;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
+      bottom: 45px;
+      left: 10px;
       font-size: 16px;
-      color: rgba(0, 0, 0, 0.5);
+      color: white;
+      background-color: transparent;
+      width: 75%;
+      vertical-align: text-bottom;
     }
   </style>
 </head>
 <body>
-  <div class="copy"><h1 style="display: inline;">Cryptin Video</h1> by FiveMania</div>
+  <div class="copy">
+    
+  </div>
+  
+  <input onkeydown="if (event.keyCode == 13) { sendChatMessage(this); }" style="padding: 5px; border-radius: 5px; border: 1px solid silver; bottom: 10px; left: 10px; position: absolute;">
+  
   <video id="localVideo" autoplay muted></video>
   <img src="https://media.giphy.com/media/jAYUbVXgESSti/giphy.gif" style="transform: scale(2.5); position: relative; max-width: 32px;">
-  <video id="remoteVideo" autoplay></video>
-  <script src="script.js"></script>
+  <video id="remoteVideo" autoplay></video>  
+  <script>
+  	// Generate random room name if needed
+if (!location.hash) {
+  location.hash = Math.floor(Math.random() * 0xFFFFFF).toString(16);
+}
+const roomHash = location.hash.substring(1);
+
+// TODO: Replace with your own channel ID
+const drone = new ScaleDrone('U8995pylltDUX4se');
+const chatdrone = new ScaleDrone('U8995pylltDUX4se');
+// Room name needs to be prefixed with 'observable-'
+const roomName = 'observable-' + roomHash;
+const chatRoomName = 'observable-' + roomHash;
+const configuration = {
+  iceServers: [{
+    urls: 'stun:stun.l.google.com:19302'
+  }]
+};
+
+var messagesHistory = ["SERVIDOR: Conectado à sala de vídeo."]
+
+let room;
+let pc;
+
+chatdrone.on('open', error => {
+  if (error) {
+    return console.error(error);
+  }
+  
+});
+
+chatdrone.on('message', message => {
+  document.querySelector('.copy').innerHTML += `<span style="padding: 5px; background-color: #444446; display: inline-block; border-radius: 5px;">` + message + `</span><br><br>`;
+});
+
+function sendChatMessage(messageInput) {
+	document.querySelector('.copy').innerHTML += `<span style="padding: 5px; background-color: royalblue; display: inline-block; border-radius: 5px;">` + messageInput.value + `</span><br><br>`;
+  drone.publish({
+  room: chatRoomName,
+  message: message
+});
+}
+
+function onSuccess() {};
+function onError(error) {
+  console.error(error);
+};
+
+drone.on('open', error => {
+  if (error) {
+    return console.error(error);
+  }
+  room = drone.subscribe(roomName);
+  room.on('open', error => {
+    if (error) {
+      onError(error);
+    }
+  });
+  // We're connected to the room and received an array of 'members'
+  // connected to the room (including us). Signaling server is ready.
+  room.on('members', members => {
+    console.log('MEMBERS', members);
+    // If we are the second user to connect to the room we will be creating the offer
+    const isOfferer = members.length === 2;
+    startWebRTC(isOfferer);
+  });
+});
+
+// Send signaling data via Scaledrone
+function sendMessage(message) {
+  drone.publish({
+    room: roomName,
+    message
+  });
+}
+
+function startWebRTC(isOfferer) {
+  pc = new RTCPeerConnection(configuration);
+
+  // 'onicecandidate' notifies us whenever an ICE agent needs to deliver a
+  // message to the other peer through the signaling server
+  pc.onicecandidate = event => {
+    if (event.candidate) {
+      sendMessage({'candidate': event.candidate});
+    }
+  };
+
+  // If user is offerer let the 'negotiationneeded' event create the offer
+  if (isOfferer) {
+    pc.onnegotiationneeded = () => {
+      pc.createOffer().then(localDescCreated).catch(onError);
+    }
+  }
+
+  // When a remote stream arrives display it in the #remoteVideo element
+  pc.ontrack = event => {
+    const stream = event.streams[0];
+    if (!remoteVideo.srcObject || remoteVideo.srcObject.id !== stream.id) {
+      remoteVideo.srcObject = stream;
+    }
+  };
+
+  navigator.mediaDevices.getUserMedia({
+    audio: true,
+    video: true,
+  }).then(stream => {
+    // Display your local video in #localVideo element
+    localVideo.srcObject = stream;
+    // Add your stream to be sent to the conneting peer
+    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+  }, onError);
+
+  // Listen to signaling data from Scaledrone
+  room.on('data', (message, client) => {
+    // Message was sent by us
+    if (client.id === drone.clientId) {
+      return;
+    }
+
+    if (message.sdp) {
+      // This is called after receiving an offer or answer from another peer
+      pc.setRemoteDescription(new RTCSessionDescription(message.sdp), () => {
+        // When receiving an offer lets answer it
+        if (pc.remoteDescription.type === 'offer') {
+          pc.createAnswer().then(localDescCreated).catch(onError);
+        }
+      }, onError);
+    } else if (message.candidate) {
+      // Add the new ICE candidate to our connections remote description
+      pc.addIceCandidate(
+        new RTCIceCandidate(message.candidate), onSuccess, onError
+      );
+    }
+  });
+}
+
+function localDescCreated(desc) {
+  pc.setLocalDescription(
+    desc,
+    () => sendMessage({'sdp': pc.localDescription}),
+    onError
+  );
+}
+  </script>
 </body>
 </html>
