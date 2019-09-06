@@ -45,7 +45,7 @@
     
   </div>
   
-  <input onkeydown="if (event.keyCode == 13) { sendChatMessage(this); }" style="padding: 5px; border-radius: 5px; border: 1px solid silver; bottom: 10px; left: 10px; position: absolute;">
+  <input id="msginp" onkeydown="if (event.keyCode == 13) { sendChatMessage(this); }" style="padding: 5px; border-radius: 5px; border: 1px solid silver; bottom: 10px; left: 10px; position: absolute;">
   
   <video id="localVideo" autoplay muted></video>
   <img src="https://media.giphy.com/media/jAYUbVXgESSti/giphy.gif" style="transform: scale(2.5); position: relative; max-width: 32px;">
@@ -86,10 +86,6 @@ drone.on('message', message => {
 
 function sendChatMessage(messageInput) {
   document.querySelector('.copy').innerHTML += `<span style="padding: 5px; background-color: royalblue; display: inline-block; border-radius: 5px;">` + messageInput.value + `</span><br><br>`;
-  drone.publish({
-  room: chatRoomName,
-  message: message
-});
 }
 
 function onSuccess() {};
@@ -118,10 +114,11 @@ drone.on('open', error => {
 });
 
 // Send signaling data via Scaledrone
-function sendMessage(message) {
+function sendMessage(messageString) {
+  messageString = document.getElementById("msginp").value;
   drone.publish({
     room: roomName,
-    message
+    message: messageString
   });
 }
 
