@@ -2,7 +2,6 @@
 <html>
 <head>
   <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous">
   <title>Cryptin Video</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width">
@@ -60,7 +59,6 @@ const roomHash = location.hash.substring(1);
 
 // TODO: Replace with your own channel ID
 const drone = new ScaleDrone('U8995pylltDUX4se');
-const chatdrone = new ScaleDrone('U8995pylltDUX4se');
 // Room name needs to be prefixed with 'observable-'
 const roomName = 'observable-' + roomHash;
 const chatRoomName = 'observable-' + roomHash;
@@ -82,12 +80,12 @@ chatdrone.on('open', error => {
   
 });
 
-chatdrone.on('message', message => {
+drone.on('message', message => {
   document.querySelector('.copy').innerHTML += `<span style="padding: 5px; background-color: #444446; display: inline-block; border-radius: 5px;">` + message + `</span><br><br>`;
 });
 
 function sendChatMessage(messageInput) {
-	document.querySelector('.copy').innerHTML += `<span style="padding: 5px; background-color: royalblue; display: inline-block; border-radius: 5px;">` + messageInput.value + `</span><br><br>`;
+  document.querySelector('.copy').innerHTML += `<span style="padding: 5px; background-color: royalblue; display: inline-block; border-radius: 5px;">` + messageInput.value + `</span><br><br>`;
   drone.publish({
   room: chatRoomName,
   message: message
