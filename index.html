@@ -73,7 +73,7 @@ var messagesHistory = ["SERVIDOR: Conectado à sala de vídeo."]
 let room;
 let pc;
 
-chatdrone.on('open', error => {
+drone.on('open', error => {
   if (error) {
     return console.error(error);
   }
